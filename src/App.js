@@ -1,14 +1,13 @@
-/* global __app_id, __firebase_config, __initial_auth_token */
-import React, { useState, useEffect, useRef, useCallback } from 'react'; // Added useCallback
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } from 'firebase/firestore'; // Removed getDoc
+import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 // Define the main App component
 const App = () => {
     // State variables for Firebase and user authentication
     const [db, setDb] = useState(null);
-    const [auth, setAuth] = useState(null);
+    const [auth, setAuth] = useState(null); // 'auth' is assigned a value but never used (this warning is fine for now)
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // To ensure auth is ready before Firestore ops
 
@@ -98,14 +97,14 @@ const App = () => {
     const sendInitialGreeting = useCallback(async () => {
         const initialTerapinMessage = "Hola, en qué te puedo ayudar?";
         await sendMessageToFirestore('terapin', initialTerapinMessage);
-    }, [db, userId]); // Add db and userId as dependencies for sendMessageToFirestore
+    }, [sendMessageToFirestore]); // Changed dependencies to include sendMessageToFirestore
 
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
         // Get app ID and Firebase config from global variables or Netlify environment variables
         // For Netlify, we use process.env.REACT_APP_...
         // For Canvas, we use __app_id etc.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG || '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : process.env.REACT_APP_INITIAL_AUTH_TOKEN;
 
@@ -152,7 +151,7 @@ const App = () => {
     }, []); // Empty dependency array means this runs once on component mount
 
     // Function to send a message to Firestore
-    const sendMessageToFirestore = useCallback(async (sender, text) => { // Made useCallback
+    const sendMessageToFirestore = useCallback(async (sender, text) => {
         if (!db || !userId) {
             console.error("Firestore or User ID not available.");
             return;
@@ -184,7 +183,7 @@ const App = () => {
                 setMessages(fetchedMessages);
                 // If no messages, send the initial greeting from Terapin
                 if (fetchedMessages.length === 0) {
-                    sendInitialGreeting(); // sendInitialGreeting is now a dependency
+                    sendInitialGreeting();
                 }
             }, (error) => {
                 console.error("Error fetching messages from Firestore:", error);
