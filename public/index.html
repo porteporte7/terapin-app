@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terapin - Tu Consultorio Digital</title>
+    <!-- Carga Tailwind CSS desde CDN para un uso rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de la fuente Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilos para la barra de desplazamiento personalizada */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #374151; /* bg-gray-700 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #60a5fa; /* bg-blue-400 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6; /* bg-blue-500 */
+        }
+    </style>
+</head>
+<body>
+    <noscript>Necesitas habilitar JavaScript para ejecutar esta aplicación.</noscript>
+    <div id="root"></div> <!-- Asegúrate de que este div tenga id="root" -->
+    <!-- Aquí es donde React montará tu aplicación -->
+    <!-- No necesitas scripts aquí para React, ya que el proceso de "build" los inyectará -->
+</body>
+</html>
