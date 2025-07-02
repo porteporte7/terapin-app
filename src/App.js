@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+/* global __app_id, __firebase_config, __initial_auth_token */
+import React, { useState, useEffect, useRef, useCallback } from 'react'; // Added useCallback
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } from 'firebase/firestore'; // Removed getDoc
 
 // Define the main App component
 const App = () => {
@@ -93,11 +94,21 @@ const App = () => {
         Por último, te vuelvo a señalar la vital importancia que tiene que leas, proceses y almacenes en tu memoria las preguntas y respuestas contenidas en el archivo que te acompaño, y los diálogos intercambiados, de manera que partas con una buena base y tus nuevas preguntas no se repitan y traten nuevos tópicos o temas que no hayan sido resueltos en las preguntas y respuestas que te acompaño.
     `;
 
+    // Using useCallback for sendInitialGreeting to make it stable for useEffect dependency
+    const sendInitialGreeting = useCallback(async () => {
+        const initialTerapinMessage = "Hola, en qué te puedo ayudar?";
+        await sendMessageToFirestore('terapin', initialTerapinMessage);
+    }, [db, userId]); // Add db and userId as dependencies for sendMessageToFirestore
+
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
-        // Get app ID and Firebase config from global variables
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // Get app ID and Firebase config from global variables or Netlify environment variables
+        // For Netlify, we use process.env.REACT_APP_...
+        // For Canvas, we use __app_id etc.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG || '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : process.env.REACT_APP_INITIAL_AUTH_TOKEN;
+
 
         // Initialize Firebase app
         const app = initializeApp(firebaseConfig);
@@ -105,13 +116,13 @@ const App = () => {
         const firebaseAuth = getAuth(app);
 
         setDb(firestoreDb);
-        setAuth(firebaseAuth);
+        setAuth(firebaseAuth); // Keep auth state, even if not directly used in JSX
 
         // Authenticate user
         const authenticateUser = async () => {
             try {
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(firebaseAuth, __initial_auth_token);
+                if (initialAuthToken) { // Use the variable that now holds the token
+                    await signInWithCustomToken(firebaseAuth, initialAuthToken);
                 } else {
                     await signInAnonymously(firebaseAuth);
                 }
@@ -140,40 +151,16 @@ const App = () => {
         return () => unsubscribe();
     }, []); // Empty dependency array means this runs once on component mount
 
-    // Effect hook to fetch messages from Firestore once authenticated
-    useEffect(() => {
-        if (db && userId && isAuthReady) {
-            const messagesCollectionRef = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/users/${userId}/messages`);
-            const q = query(messagesCollectionRef, orderBy('timestamp'));
-
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                const fetchedMessages = snapshot.docs.map(doc => doc.data());
-                setMessages(fetchedMessages);
-                // If no messages, send the initial greeting from Terapin
-                if (fetchedMessages.length === 0) {
-                    sendInitialGreeting();
-                }
-            }, (error) => {
-                console.error("Error fetching messages from Firestore:", error);
-            });
-
-            return () => unsubscribe(); // Cleanup listener
-        }
-    }, [db, userId, isAuthReady]); // Re-run when db, userId, or isAuthReady changes
-
-    // Effect hook to scroll to the bottom of the chat window
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]); // Scroll whenever messages change
-
     // Function to send a message to Firestore
-    const sendMessageToFirestore = async (sender, text) => {
+    const sendMessageToFirestore = useCallback(async (sender, text) => { // Made useCallback
         if (!db || !userId) {
             console.error("Firestore or User ID not available.");
             return;
         }
         try {
-            const messagesCollectionRef = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/users/${userId}/messages`);
+            // Use the same logic for appId here
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
             await setDoc(doc(messagesCollectionRef), {
                 sender,
                 text,
@@ -182,13 +169,35 @@ const App = () => {
         } catch (error) {
             console.error("Error saving message to Firestore:", error);
         }
-    };
+    }, [db, userId]); // Dependencies for sendMessageToFirestore
 
-    // Function to send the initial greeting from Terapin
-    const sendInitialGreeting = async () => {
-        const initialTerapinMessage = "Hola, en qué te puedo ayudar?";
-        await sendMessageToFirestore('terapin', initialTerapinMessage);
-    };
+    // Effect hook to fetch messages from Firestore once authenticated
+    useEffect(() => {
+        if (db && userId && isAuthReady) {
+            // Use the same logic for appId here
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
+            const q = query(messagesCollectionRef, orderBy('timestamp'));
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const fetchedMessages = snapshot.docs.map(doc => doc.data());
+                setMessages(fetchedMessages);
+                // If no messages, send the initial greeting from Terapin
+                if (fetchedMessages.length === 0) {
+                    sendInitialGreeting(); // sendInitialGreeting is now a dependency
+                }
+            }, (error) => {
+                console.error("Error fetching messages from Firestore:", error);
+            });
+
+            return () => unsubscribe(); // Cleanup listener
+        }
+    }, [db, userId, isAuthReady, sendInitialGreeting]); // sendInitialGreeting added as dependency
+
+    // Effect hook to scroll to the bottom of the chat window
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]); // Scroll whenever messages change
 
     // Function to handle sending a message from the user
     const handleSendMessage = async (e) => {
