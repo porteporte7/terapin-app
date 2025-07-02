@@ -95,9 +95,13 @@ const App = () => {
 
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
-        // Get app ID and Firebase config from global variables
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // Get app ID and Firebase config from global variables or Netlify environment variables
+        // For Netlify, we use process.env.REACT_APP_...
+        // For Canvas, we use __app_id etc.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG || '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : process.env.REACT_APP_INITIAL_AUTH_TOKEN;
+
 
         // Initialize Firebase app
         const app = initializeApp(firebaseConfig);
@@ -110,8 +114,8 @@ const App = () => {
         // Authenticate user
         const authenticateUser = async () => {
             try {
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(firebaseAuth, __initial_auth_token);
+                if (initialAuthToken) { // Use the variable that now holds the token
+                    await signInWithCustomToken(firebaseAuth, initialAuthToken);
                 } else {
                     await signInAnonymously(firebaseAuth);
                 }
@@ -143,7 +147,9 @@ const App = () => {
     // Effect hook to fetch messages from Firestore once authenticated
     useEffect(() => {
         if (db && userId && isAuthReady) {
-            const messagesCollectionRef = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/users/${userId}/messages`);
+            // Use the same logic for appId here
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
             const q = query(messagesCollectionRef, orderBy('timestamp'));
 
             const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -173,7 +179,9 @@ const App = () => {
             return;
         }
         try {
-            const messagesCollectionRef = collection(db, `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/users/${userId}/messages`);
+            // Use the same logic for appId here
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
             await setDoc(doc(messagesCollectionRef), {
                 sender,
                 text,
