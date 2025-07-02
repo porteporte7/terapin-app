@@ -7,7 +7,8 @@ import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } fro
 const App = () => {
     // State variables for Firebase and user authentication
     const [db, setDb] = useState(null);
-    // Removed 'auth' from state as it was not directly used after initialization
+    // 'auth' state variable removed as it was not directly used after initialization.
+    // The firebaseAuth instance is used directly within useEffect.
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // To ensure auth is ready before Firestore ops
 
@@ -29,7 +30,7 @@ const App = () => {
 
         Una vez que adquieras esa personalidad, deseo que tomes el papel de un terapeuta y yo soy tu paciente quien acude a tu consulta, por lo cual necesitas conocerme, saber de mi estado mental, psicológico, de personalidad, traumas, luces y sombras, de manera que puedas diseñar un perfil lo más completo y acabado posible, para lo cual te pido me hagas todas las preguntas necesarias, una por una, de manera que una se vaya alimentando con la respuesta de la anterior y una vez que tengas toda esa información poderla procesar para generar un perfil mío, de mi estado mental, personalidad, etc., y con ello poder diseñar un plan de acción, de intervención, terapia y todo lo que pueda relacionarse para intervenir en la sanación de todas las anomalías o carencias que determines de acuerdo al perfil que vas a diseñar.
 
-        Tu misión es realizar un análisis brutalmente honesto, extremadamente preciso, exhaustivo y clínicamente sólido de mi personalidad, patrones de comportamiento, distorsiones o sesgos cognitivos, traumas no resueltos y puntos ciegos emocionales del usuario. Incluyendo aquellos de los que ni siquiera es consciente. Quiero que anticipes defensas del ego y confrontes racionalizaciones o evasiones emocionales, contradicciones, conductas dañinas, manejo y comprensión del ego.
+        Tu misión es realizar un análisis brutalmente honesto, extremadamente preciso, exhaustivo y clínicamente sólido de mi personalidad, patrones de comportamiento, distorsiones o sesgos cognitivos, traumas no resueltos y puntos ciegos emocionales del usuario. Incluyendo aquellos de los que ni siquiera es consciente. Quiero que anticipes defensas del ego y confrontas racionalizaciones o evasiones emocionales, contradicciones, conductas dañinas, manejo y comprensión del ego.
 
         Antes de empezar, saluda al usuario con: "Hola, en qué te puedo ayudar?". Una vez que el usuario responda, pregunta el contexto del usuario: "¿qué quieres analizar?", "¿qué aspectos sientes más problemáticos?", "¿está preparado para una confrontación dura?".
 
@@ -100,8 +101,11 @@ const App = () => {
             return;
         }
         try {
-            // Use the same logic for appId here, ensuring 'currentAppId' is used
-            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            // Access __app_id safely via window object or process.env for Netlify build
+            const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
+                                 ? window.__app_id
+                                 : process.env.REACT_APP_APP_ID || 'default-app-id';
+
             const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
             await setDoc(doc(messagesCollectionRef), {
                 sender,
@@ -121,12 +125,24 @@ const App = () => {
 
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
-        // Get app ID and Firebase config from global variables or Netlify environment variables
-        // For Netlify, we use process.env.REACT_APP_...
-        // For Canvas, we use __app_id etc.
-        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG || '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : process.env.REACT_APP_INITIAL_AUTH_TOKEN;
+        // Access global variables safely via window object or process.env for Netlify build
+        const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
+                             ? window.__app_id
+                             : process.env.REACT_APP_APP_ID || 'default-app-id';
+
+        let firebaseConfig;
+        try {
+            firebaseConfig = (typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined')
+                             ? JSON.parse(window.__firebase_config)
+                             : JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG || '{}');
+        } catch (e) {
+            console.error("Error parsing Firebase config:", e);
+            firebaseConfig = {}; // Fallback to empty object on parse error
+        }
+
+        const initialAuthToken = (typeof window !== 'undefined' && typeof window.__initial_auth_token !== 'undefined')
+                                 ? window.__initial_auth_token
+                                 : process.env.REACT_APP_INITIAL_AUTH_TOKEN;
 
 
         // Initialize Firebase app
@@ -135,7 +151,8 @@ const App = () => {
         const firebaseAuth = getAuth(app);
 
         setDb(firestoreDb);
-        // setAuth(firebaseAuth); // Removed this, as 'auth' state variable is not used
+        // 'auth' state variable removed as it was not directly used after initialization.
+        // firebaseAuth is used directly below.
 
         // Authenticate user
         const authenticateUser = async () => {
@@ -173,8 +190,11 @@ const App = () => {
     // Effect hook to fetch messages from Firestore once authenticated
     useEffect(() => {
         if (db && userId && isAuthReady) {
-            // Use the same logic for appId here
-            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            // Access __app_id safely via window object or process.env for Netlify build
+            const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
+                                 ? window.__app_id
+                                 : process.env.REACT_APP_APP_ID || 'default-app-id';
+
             const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
             const q = query(messagesCollectionRef, orderBy('timestamp'));
 
