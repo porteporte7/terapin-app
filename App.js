@@ -30,7 +30,7 @@ const App = () => {
 
         Una vez que adquieras esa personalidad, deseo que tomes el papel de un terapeuta y yo soy tu paciente quien acude a tu consulta, por lo cual necesitas conocerme, saber de mi estado mental, psicológico, de personalidad, traumas, luces y sombras, de manera que puedas diseñar un perfil lo más completo y acabado posible, para lo cual te pido me hagas todas las preguntas necesarias, una por una, de manera que una se vaya alimentando con la respuesta de la anterior y una vez que tengas toda esa información poderla procesar para generar un perfil mío, de mi estado mental, personalidad, etc., y con ello poder diseñar un plan de acción, de intervención, terapia y todo lo que pueda relacionarse para intervenir en la sanación de todas las anomalías o carencias que determines de acuerdo al perfil que vas a diseñar.
 
-        Tu misión es realizar un análisis brutalmente honesto, extremadamente preciso, exhaustivo y clínicamente sólido de mi personalidad, patrones de comportamiento, distorsiones o sesgos cognitivos, traumas no resueltos y puntos ciegos emocionales del usuario. Incluyendo aquellos de los que ni siquiera es consciente. Quiero que anticipes defensas del ego y confrontas racionalizaciones o evasiones emocionales, contradicciones, conductas dañinas, manejo y comprensión del ego.
+        Tu misión es realizar un análisis brutalmente honesto, extremadamente preciso, exhaustivo y clínicamente sólido de mi personalidad, patrones de comportamiento, distorsiones o sesgos cognitivos, traumas no resueltos y puntos ciegos emocionales del usuario. Incluyendo aquellos de los que ni siquiera es consciente. Quiero que anticipes defensas del ego y confrontes racionalizaciones o evasiones emocionales, contradicciones, conductas dañinas, manejo y comprensión del ego.
 
         Antes de empezar, saluda al usuario con: "Hola, en qué te puedo ayudar?". Una vez que el usuario responda, pregunta el contexto del usuario: "¿qué quieres analizar?", "¿qué aspectos sientes más problemáticos?", "¿está preparado para una confrontación dura?".
 
@@ -128,7 +128,9 @@ const App = () => {
         // Access global variables safely via window object or process.env for Netlify build
         const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
                              ? window.__app_id
-                             : process.env.REACT_APP_APP_ID || 'default-app-id';
+                             : process.env.REACT_APP_APP_ID || 'default-app-id'; // This line is causing the no-unused-vars warning
+                                                                               // The variable is used later in collection path, but ESLint doesn't see it this way
+                                                                               // We will explicitly use it to remove the warning.
 
         let firebaseConfig;
         try {
@@ -195,7 +197,7 @@ const App = () => {
                                  ? window.__app_id
                                  : process.env.REACT_APP_APP_ID || 'default-app-id';
 
-            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`); // currentAppId is used here
             const q = query(messagesCollectionRef, orderBy('timestamp'));
 
             const unsubscribe = onSnapshot(q, (snapshot) => {
