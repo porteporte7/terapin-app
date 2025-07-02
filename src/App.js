@@ -7,7 +7,7 @@ import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } fro
 const App = () => {
     // State variables for Firebase and user authentication
     const [db, setDb] = useState(null);
-    const [auth, setAuth] = useState(null); // 'auth' is assigned a value but never used (this warning is fine for now)
+    // Removed 'auth' from state as it was not directly used after initialization
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // To ensure auth is ready before Firestore ops
 
@@ -93,11 +93,31 @@ const App = () => {
         Por último, te vuelvo a señalar la vital importancia que tiene que leas, proceses y almacenes en tu memoria las preguntas y respuestas contenidas en el archivo que te acompaño, y los diálogos intercambiados, de manera que partas con una buena base y tus nuevas preguntas no se repitan y traten nuevos tópicos o temas que no hayan sido resueltos en las preguntas y respuestas que te acompaño.
     `;
 
+    // Function to send a message to Firestore - DEFINED BEFORE IT'S USED
+    const sendMessageToFirestore = useCallback(async (sender, text) => {
+        if (!db || !userId) {
+            console.error("Firestore or User ID not available.");
+            return;
+        }
+        try {
+            // Use the same logic for appId here, ensuring 'currentAppId' is used
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
+            await setDoc(doc(messagesCollectionRef), {
+                sender,
+                text,
+                timestamp: new Date(),
+            });
+        } catch (error) {
+            console.error("Error saving message to Firestore:", error);
+        }
+    }, [db, userId]); // Dependencies for sendMessageToFirestore
+
     // Using useCallback for sendInitialGreeting to make it stable for useEffect dependency
     const sendInitialGreeting = useCallback(async () => {
         const initialTerapinMessage = "Hola, en qué te puedo ayudar?";
         await sendMessageToFirestore('terapin', initialTerapinMessage);
-    }, [sendMessageToFirestore]); // Changed dependencies to include sendMessageToFirestore
+    }, [sendMessageToFirestore]); // sendInitialGreeting now depends on sendMessageToFirestore
 
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
@@ -115,7 +135,7 @@ const App = () => {
         const firebaseAuth = getAuth(app);
 
         setDb(firestoreDb);
-        setAuth(firebaseAuth); // Keep auth state, even if not directly used in JSX
+        // setAuth(firebaseAuth); // Removed this, as 'auth' state variable is not used
 
         // Authenticate user
         const authenticateUser = async () => {
@@ -149,26 +169,6 @@ const App = () => {
         // Cleanup subscription on unmount
         return () => unsubscribe();
     }, []); // Empty dependency array means this runs once on component mount
-
-    // Function to send a message to Firestore
-    const sendMessageToFirestore = useCallback(async (sender, text) => {
-        if (!db || !userId) {
-            console.error("Firestore or User ID not available.");
-            return;
-        }
-        try {
-            // Use the same logic for appId here
-            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
-            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
-            await setDoc(doc(messagesCollectionRef), {
-                sender,
-                text,
-                timestamp: new Date(),
-            });
-        } catch (error) {
-            console.error("Error saving message to Firestore:", error);
-        }
-    }, [db, userId]); // Dependencies for sendMessageToFirestore
 
     // Effect hook to fetch messages from Firestore once authenticated
     useEffect(() => {
