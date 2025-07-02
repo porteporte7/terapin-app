@@ -18,7 +18,7 @@
       "react-app",
       "react-app/jest"
     ],
-    "globals": {  // <-- ¡AÑADE ESTA SECCIÓN!
+    "globals": {
       "__app_id": "readonly",
       "__firebase_config": "readonly",
       "__initial_auth_token": "readonly"
