@@ -7,8 +7,6 @@ import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } fro
 const App = () => {
     // State variables for Firebase and user authentication
     const [db, setDb] = useState(null);
-    // 'auth' state variable removed as it was not directly used after initialization.
-    // The firebaseAuth instance is used directly within useEffect.
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // To ensure auth is ready before Firestore ops
 
@@ -102,11 +100,11 @@ const App = () => {
         }
         try {
             // Access __app_id safely via window object or process.env for Netlify build
-            const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
-                                 ? window.__app_id
-                                 : process.env.REACT_APP_APP_ID || 'default-app-id';
-
-            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
+            const messagesCollectionRef = collection(db, `artifacts/${
+                (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
+                ? window.__app_id
+                : process.env.REACT_APP_APP_ID || 'default-app-id'
+            }/users/${userId}/messages`);
             await setDoc(doc(messagesCollectionRef), {
                 sender,
                 text,
@@ -126,12 +124,6 @@ const App = () => {
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
         // Access global variables safely via window object or process.env for Netlify build
-        const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
-                             ? window.__app_id
-                             : process.env.REACT_APP_APP_ID || 'default-app-id'; // This line is causing the no-unused-vars warning
-                                                                               // The variable is used later in collection path, but ESLint doesn't see it this way
-                                                                               // We will explicitly use it to remove the warning.
-
         let firebaseConfig;
         try {
             firebaseConfig = (typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined')
@@ -193,11 +185,11 @@ const App = () => {
     useEffect(() => {
         if (db && userId && isAuthReady) {
             // Access __app_id safely via window object or process.env for Netlify build
-            const currentAppId = (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
-                                 ? window.__app_id
-                                 : process.env.REACT_APP_APP_ID || 'default-app-id';
-
-            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`); // currentAppId is used here
+            const messagesCollectionRef = collection(db, `artifacts/${
+                (typeof window !== 'undefined' && typeof window.__app_id !== 'undefined')
+                ? window.__app_id
+                : process.env.REACT_APP_APP_ID || 'default-app-id'
+            }/users/${userId}/messages`);
             const q = query(messagesCollectionRef, orderBy('timestamp'));
 
             const unsubscribe = onSnapshot(q, (snapshot) => {
