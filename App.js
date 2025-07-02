@@ -1,14 +1,13 @@
-/* global __app_id, __firebase_config, __initial_auth_token */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 // Define the main App component
 const App = () => {
     // State variables for Firebase and user authentication
     const [db, setDb] = useState(null);
-    const [auth, setAuth] = useState(null);
+    // Removed 'auth' from state as it was not directly used after initialization
     const [userId, setUserId] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // To ensure auth is ready before Firestore ops
 
@@ -94,12 +93,38 @@ const App = () => {
         Por último, te vuelvo a señalar la vital importancia que tiene que leas, proceses y almacenes en tu memoria las preguntas y respuestas contenidas en el archivo que te acompaño, y los diálogos intercambiados, de manera que partas con una buena base y tus nuevas preguntas no se repitan y traten nuevos tópicos o temas que no hayan sido resueltos en las preguntas y respuestas que te acompaño.
     `;
 
+    // Function to send a message to Firestore - DEFINED BEFORE IT'S USED
+    const sendMessageToFirestore = useCallback(async (sender, text) => {
+        if (!db || !userId) {
+            console.error("Firestore or User ID not available.");
+            return;
+        }
+        try {
+            // Use the same logic for appId here, ensuring 'currentAppId' is used
+            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
+            await setDoc(doc(messagesCollectionRef), {
+                sender,
+                text,
+                timestamp: new Date(),
+            });
+        } catch (error) {
+            console.error("Error saving message to Firestore:", error);
+        }
+    }, [db, userId]); // Dependencies for sendMessageToFirestore
+
+    // Using useCallback for sendInitialGreeting to make it stable for useEffect dependency
+    const sendInitialGreeting = useCallback(async () => {
+        const initialTerapinMessage = "Hola, en qué te puedo ayudar?";
+        await sendMessageToFirestore('terapin', initialTerapinMessage);
+    }, [sendMessageToFirestore]); // sendInitialGreeting now depends on sendMessageToFirestore
+
     // Effect hook for Firebase initialization and authentication
     useEffect(() => {
         // Get app ID and Firebase config from global variables or Netlify environment variables
         // For Netlify, we use process.env.REACT_APP_...
         // For Canvas, we use __app_id etc.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
+        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG || '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : process.env.REACT_APP_INITIAL_AUTH_TOKEN;
 
@@ -110,7 +135,7 @@ const App = () => {
         const firebaseAuth = getAuth(app);
 
         setDb(firestoreDb);
-        setAuth(firebaseAuth);
+        // setAuth(firebaseAuth); // Removed this, as 'auth' state variable is not used
 
         // Authenticate user
         const authenticateUser = async () => {
@@ -166,38 +191,12 @@ const App = () => {
 
             return () => unsubscribe(); // Cleanup listener
         }
-    }, [db, userId, isAuthReady]); // Re-run when db, userId, or isAuthReady changes
+    }, [db, userId, isAuthReady, sendInitialGreeting]); // sendInitialGreeting added as dependency
 
     // Effect hook to scroll to the bottom of the chat window
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]); // Scroll whenever messages change
-
-    // Function to send a message to Firestore
-    const sendMessageToFirestore = async (sender, text) => {
-        if (!db || !userId) {
-            console.error("Firestore or User ID not available.");
-            return;
-        }
-        try {
-            // Use the same logic for appId here
-            const currentAppId = typeof __app_id !== 'undefined' ? __app_id : process.env.REACT_APP_APP_ID || 'default-app-id';
-            const messagesCollectionRef = collection(db, `artifacts/${currentAppId}/users/${userId}/messages`);
-            await setDoc(doc(messagesCollectionRef), {
-                sender,
-                text,
-                timestamp: new Date(),
-            });
-        } catch (error) {
-            console.error("Error saving message to Firestore:", error);
-        }
-    };
-
-    // Function to send the initial greeting from Terapin
-    const sendInitialGreeting = async () => {
-        const initialTerapinMessage = "Hola, en qué te puedo ayudar?";
-        await sendMessageToFirestore('terapin', initialTerapinMessage);
-    };
 
     // Function to handle sending a message from the user
     const handleSendMessage = async (e) => {
